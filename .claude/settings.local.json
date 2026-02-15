@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"A:\\\\cursor \\(3\\)\\\\cursor\" -maxdepth 2 -type f \\\\\\( -name \"*.jsx\" -o -name \"*.js\" \\\\\\))",
+      "Bash(find \"A:\\\\cursor \\(3\\)\\\\cursor\" -maxdepth 3 -type f -name \"*.py\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\")",
+      "Bash(ls -laR \"A:\\\\cursor \\(3\\)\\\\cursor/src\")",
+      "Bash(ls -laR \"A:\\\\cursor \\(3\\)\\\\cursor/backend\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor/backend\")",
+      "Bash(find \"A:\\\\cursor \\(3\\)\\\\cursor\" -type f -name \".env\" -o -name \".env.example\" -o -name \"env.example.txt\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor/public\")",
+      "Bash(wc -l \"A:\\\\cursor \\(3\\)\\\\cursor/backend/db.sqlite3\")",
+      "Bash(ls -lh \"A:\\\\cursor \\(3\\)\\\\cursor/backend\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor/backend/media\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor/backend/api\")",
+      "Bash(find \"A:\\\\cursor \\(3\\)\\\\cursor\" -type d -name \"node_modules\")",
+      "Bash(find \"A:\\\\cursor \\(3\\)\\\\cursor\" -type f -name \"*.pyc\")",
+      "Bash(du -sh \"A:\\\\cursor \\(3\\)\\\\cursor/venv\")",
+      "Bash(find \"A:\\\\cursor \\(3\\)\\\\cursor\" -type f -name \"*.log\" -o -name \"*.tmp\" -o -name \"*.temp\")",
+      "Bash(find \"A:\\\\cursor \\(3\\)\\\\cursor\" -type d -name \"__pycache__\")",
+      "Bash(git -C \"A:\\\\cursor \\(3\\)\\\\cursor\" status --short)",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\api\"\")",
+      "Bash(ls -la A:/cursor \\\\\\(3\\\\\\)/cursor/backend/api/)",
+      "Bash(ls -la A:/cursor \\\\\\(3\\\\\\)/cursor/backend/)",
+      "Bash(ls -la A:/cursor \\\\\\(3\\\\\\)/cursor/backend/backend/)",
+      "Bash(ls -la A:/cursor \\\\\\(3\\\\\\)/cursor/backend/api/migrations/)",
+      "Bash(dir \"A:\\\\cursor\" /b)",
+      "Bash(ls -la \"A:/cursor \\(3\\)/\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\")",
+      "Bash(find \"A:\\\\cursor \\(3\\)\" -maxdepth 3 -type d)",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\media\")",
+      "Bash(find \"A:\\\\cursor \\(3\\)\\\\cursor\" -type f -name \"*.jpeg\" -o -name \"*.jpg\" -o -name \"*.png\")",
+      "Bash(\"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\backend\\\\__init__.py\")",
+      "Bash(\"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\backend\\\\wsgi.py\" << 'EOF'\n\"\"\"\nWSGI config for backend project.\n\nIt exposes the WSGI callable as a module-level variable named ``application``.\n\nFor more information on this file, see\nhttps://docs.djangoproject.com/en/5.0/howto/deployment/wsgi/\n\"\"\"\n\nimport os\n\nfrom django.core.wsgi import get_wsgi_application\n\nos.environ.setdefault\\(\"DJANGO_SETTINGS_MODULE\", \"backend.settings\"\\)\n\napplication = get_wsgi_application\\(\\)\nEOF)",
+      "Bash(dir \"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\backend\"\" | findstr \"wsgi __init__ routing \")",
+      "Bash(ls \"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\backend\\\\routing.py\")",
+      "Bash(python manage.py check)"
+    ]
+  }
+}
