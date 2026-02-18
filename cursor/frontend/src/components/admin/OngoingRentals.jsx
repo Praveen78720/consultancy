@@ -1,34 +1,16 @@
 import { useState, useEffect } from 'react'
 import { api, endpoints } from '../../services/api'
 
-const RentalHistory = () => {
+const OngoingRentals = () => {
   const [rentals, setRentals] = useState([])
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [returningId, setReturningId] = useState(null)
+  const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
     fetchRentalsAndDevices()
-
-    // Refresh data when window regains focus (user returns to tab)
-    const handleFocus = () => {
-      fetchRentalsAndDevices()
-    }
-
-    // Refresh when tab becomes visible (user switches tabs)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchRentalsAndDevices()
-      }
-    }
-
-    window.addEventListener('focus', handleFocus)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
   }, [])
 
   const fetchRentalsAndDevices = async () => {
@@ -48,6 +30,18 @@ const RentalHistory = () => {
 
       const enrichedRentals = rentalsData.map((rental) => {
         const device = deviceMap[rental.device_serial] || {}
+        const today = new Date()
+        const toDate = new Date(rental.to_date)
+        const fromDate = new Date(rental.from_date)
+
+        let dateStatus
+        if (toDate < today) {
+          dateStatus = 'overdue'
+        } else if (fromDate <= today && toDate >= today) {
+          dateStatus = 'active'
+        } else {
+          dateStatus = 'upcoming'
+        }
 
         return {
           id: rental.id,
@@ -61,23 +55,53 @@ const RentalHistory = () => {
           rentalDays: rental.rental_days,
           securityDeposit: rental.security_deposit,
           status: rental.status,
+          dateStatus: dateStatus,
           idProof: rental.id_proof,
           createdAt: rental.created_at,
-          returnedAt: rental.updated_at || rental.created_at,
         }
       })
 
-      const returnedRentals = enrichedRentals.filter(
-        (rental) => rental.status === 'returned'
+      const ongoingRentals = enrichedRentals.filter(
+        (rental) => rental.status === 'active'
       )
 
-      setRentals(returnedRentals)
+      setRentals(ongoingRentals)
       setDevices(devicesData)
     } catch (err) {
       console.error('Error fetching rentals:', err)
-      setError(err.message || 'Failed to load rental history. Please try again.')
+      setError(err.message || 'Failed to load ongoing rentals. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleReturn = async (rentalId) => {
+    try {
+      setReturningId(rentalId)
+      setError('')
+      setSuccessMessage('')
+
+      const response = await api.post(
+        endpoints.rentals.return(rentalId),
+        {}
+      )
+
+      setSuccessMessage(
+        `Device returned successfully! ${response.device_serial} is now available.`
+      )
+
+      setRentals((prevRentals) =>
+        prevRentals.filter((rental) => rental.id !== rentalId)
+      )
+
+      setTimeout(() => {
+        setSuccessMessage('')
+      }, 3000)
+    } catch (err) {
+      console.error('Error returning rental:', err)
+      setError(err.message || 'Failed to return rental. Please try again.')
+    } finally {
+      setReturningId(null)
     }
   }
 
@@ -96,6 +120,35 @@ const RentalHistory = () => {
     return '₹' + Number(amount).toLocaleString('en-IN')
   }
 
+  const getDateStatusBadge = (dateStatus) => {
+    switch (dateStatus) {
+      case 'active':
+        return (
+          <span className="px-3 py-1 rounded-full text-sm font-medium text-white bg-green-500">
+            Currently Active
+          </span>
+        )
+      case 'overdue':
+        return (
+          <span className="px-3 py-1 rounded-full text-sm font-medium text-white bg-red-500">
+            Overdue
+          </span>
+        )
+      case 'upcoming':
+        return (
+          <span className="px-3 py-1 rounded-full text-sm font-medium text-white bg-yellow-500">
+            Upcoming
+          </span>
+        )
+      default:
+        return (
+          <span className="px-3 py-1 rounded-full text-sm font-medium text-white bg-gray-500">
+            Unknown
+          </span>
+        )
+    }
+  }
+
   const RentalCard = ({ rental }) => (
     <div className="card hover:shadow-md transition-shadow">
       <div className="flex flex-col gap-4">
@@ -106,9 +159,7 @@ const RentalHistory = () => {
             </h3>
             <p className="text-sm text-text-secondary">{rental.customerName}</p>
           </div>
-          <span className="px-3 py-1 rounded-full text-sm font-medium text-white bg-green-600">
-            Returned
-          </span>
+          {getDateStatusBadge(rental.dateStatus)}
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-sm">
@@ -168,40 +219,44 @@ const RentalHistory = () => {
           </div>
         </div>
 
-        {rental.idProof && (
-          <div className="border-t border-border-light pt-3">
-            <p className="text-text-secondary text-xs uppercase tracking-wide mb-2">
-              ID Proof
-            </p>
-            <a
-              href={rental.idProof}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:text-primary-dark text-sm font-medium inline-flex items-center gap-1"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                />
-              </svg>
-              View ID Proof
-            </a>
-          </div>
-        )}
+        <div className="border-t border-border-light pt-4">
+          <button
+            onClick={() => handleReturn(rental.id)}
+            disabled={returningId === rental.id}
+            className={`w-full btn-primary py-3 flex items-center justify-center gap-2 ${
+              returningId === rental.id
+                ? 'opacity-70 cursor-not-allowed'
+                : ''
+            }`}
+          >
+            {returningId === rental.id ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>Mark as Returned</span>
+              </>
+            )}
+          </button>
+          <p className="text-xs text-text-secondary text-center mt-2">
+            This will mark the device as returned and make it available again
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -211,9 +266,9 @@ const RentalHistory = () => {
       <div className="p-6 md:p-8 lg:p-10">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold text-text-primary mb-2">
-            Rental History
+            Ongoing Rentals
           </h1>
-          <p className="text-text-secondary mb-8">Loading returned rentals...</p>
+          <p className="text-text-secondary mb-8">Loading rental data...</p>
           <div className="card">
             <div className="animate-pulse space-y-4">
               <div className="h-4 bg-gray-200 rounded w-3/4"></div>
@@ -230,7 +285,7 @@ const RentalHistory = () => {
       <div className="p-6 md:p-8 lg:p-10">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold text-text-primary mb-2">
-            Rental History
+            Ongoing Rentals
           </h1>
           <div className="card border border-red-300 bg-red-50">
             <div className="flex flex-col items-center justify-center py-8">
@@ -280,21 +335,40 @@ const RentalHistory = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-text-primary mb-2">
-              Rental History
+              Ongoing Rentals
             </h1>
             <p className="text-text-secondary">
-              View all returned product rentals
+              Manage active rentals and process returns
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
+          <div className="mt-4 md:mt-0 flex gap-4">
             <div className="text-right">
               <p className="text-2xl font-bold text-text-primary">
                 {rentals.length}
               </p>
-              <p className="text-sm text-text-secondary">Returned Rentals</p>
+              <p className="text-sm text-text-secondary">Active Rentals</p>
             </div>
           </div>
         </div>
+
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+            <svg
+              className="w-6 h-6 text-green-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className="text-green-700 font-medium">{successMessage}</p>
+          </div>
+        )}
 
         {rentals.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -318,27 +392,19 @@ const RentalHistory = () => {
               />
             </svg>
             <h3 className="text-lg font-semibold text-text-primary mb-2">
-              No Returned Rentals
+              No Ongoing Rentals
             </h3>
             <p className="text-text-secondary mb-4">
-              There are no returned rentals in the history yet.
+              There are currently no active rentals in the system.
             </p>
           </div>
         )}
 
         {rentals.length > 0 && (
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="card bg-green-50 border-green-200">
-              <p className="text-green-600 text-sm font-medium">
-                Total Returned Rentals
-              </p>
-              <p className="text-2xl font-bold text-green-900">
-                {rentals.length}
-              </p>
-            </div>
             <div className="card bg-blue-50 border-blue-200">
               <p className="text-blue-600 text-sm font-medium">
-                Total Security Deposits Returned
+                Total Security Deposits
               </p>
               <p className="text-2xl font-bold text-blue-900">
                 {formatCurrency(
@@ -349,12 +415,20 @@ const RentalHistory = () => {
                 )}
               </p>
             </div>
-            <div className="card bg-purple-50 border-purple-200">
-              <p className="text-purple-600 text-sm font-medium">
-                Total Rental Days
+            <div className="card bg-yellow-50 border-yellow-200">
+              <p className="text-yellow-600 text-sm font-medium">
+                Upcoming Returns
               </p>
-              <p className="text-2xl font-bold text-purple-900">
-                {rentals.reduce((sum, r) => sum + Number(r.rentalDays || 0), 0)}
+              <p className="text-2xl font-bold text-yellow-900">
+                {
+                  rentals.filter((r) => r.dateStatus === 'upcoming').length
+                }
+              </p>
+            </div>
+            <div className="card bg-red-50 border-red-200">
+              <p className="text-red-600 text-sm font-medium">Overdue</p>
+              <p className="text-2xl font-bold text-red-900">
+                {rentals.filter((r) => r.dateStatus === 'overdue').length}
               </p>
             </div>
           </div>
@@ -364,4 +438,4 @@ const RentalHistory = () => {
   )
 }
 
-export default RentalHistory
+export default OngoingRentals

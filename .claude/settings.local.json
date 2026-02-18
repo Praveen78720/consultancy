@@ -34,7 +34,21 @@
       "Bash(\"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\backend\\\\wsgi.py\" << 'EOF'\n\"\"\"\nWSGI config for backend project.\n\nIt exposes the WSGI callable as a module-level variable named ``application``.\n\nFor more information on this file, see\nhttps://docs.djangoproject.com/en/5.0/howto/deployment/wsgi/\n\"\"\"\n\nimport os\n\nfrom django.core.wsgi import get_wsgi_application\n\nos.environ.setdefault\\(\"DJANGO_SETTINGS_MODULE\", \"backend.settings\"\\)\n\napplication = get_wsgi_application\\(\\)\nEOF)",
       "Bash(dir \"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\backend\"\" | findstr \"wsgi __init__ routing \")",
       "Bash(ls \"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\backend\\\\routing.py\")",
-      "Bash(python manage.py check)"
+      "Bash(python manage.py check)",
+      "Bash(find \"A:\\\\cursor \\(3\\)\" -name \"package.json\")",
+      "Bash(find \"A:\\\\cursor \\(3\\)\" -type f \\\\\\( -name \"*.js\" -o -name \"*.jsx\" -o -name \"*.ts\" -o -name \"*.tsx\" \\\\\\))",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\\\\frontend\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\\\\frontend\\\\src\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\\\\frontend\\\\src\\\\pages\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\\\\frontend\\\\src\\\\components\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\")",
+      "Bash(ls -laR \"A:\\\\cursor \\(3\\)\\\\cursor\\\\frontend\\\\src\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\api\")",
+      "Bash(ls -la \"A:\\\\cursor \\(3\\)\\\\cursor\\\\backend\\\\backend\")",
+      "Bash(pip install:*)",
+      "Bash(python manage.py runserver:*)",
+      "Bash(python manage.py shell:*)",
+      "Bash(python:*)"
     ]
   }
 }

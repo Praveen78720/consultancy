@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { API_BASE_URL } from '../../config'
+import { api, endpoints } from '../../services/api'
 
 const SubmitReport = () => {
   const navigate = useNavigate()
@@ -10,6 +10,7 @@ const SubmitReport = () => {
   const [selectedJobId, setSelectedJobId] = useState(urlJobId || '')
   const [inProgressJobs, setInProgressJobs] = useState([])
   const [loadingJobs, setLoadingJobs] = useState(false)
+  const [jobsError, setJobsError] = useState('')
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -28,15 +29,22 @@ const SubmitReport = () => {
 
   const fetchInProgressJobs = async () => {
     setLoadingJobs(true)
+    setJobsError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/jobs/`)
-      if (response.ok) {
-        const data = await response.json()
-        const inProgress = data.filter(job => job.status === 'in_progress')
-        setInProgressJobs(inProgress)
+      const data = await api.get(endpoints.jobs.list)
+      const inProgress = data.filter(job => job.status === 'in_progress')
+      setInProgressJobs(inProgress)
+
+      // If URL has jobId, verify it exists in the fetched jobs
+      if (urlJobId) {
+        const jobExists = inProgress.find(job => String(job.id) === String(urlJobId))
+        if (jobExists) {
+          setSelectedJobId(String(urlJobId))
+        }
       }
     } catch (error) {
       console.error('Error fetching jobs:', error)
+      setJobsError(error.message || 'Failed to load jobs. Please try again.')
     } finally {
       setLoadingJobs(false)
     }
@@ -83,49 +91,11 @@ const SubmitReport = () => {
     }
 
     try {
-      // 1) Create report record
-      const reportResponse = await fetch(`${API_BASE_URL}/api/reports/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
+      // 1) Create report record using authenticated API
+      await api.post(endpoints.reports.list, payload)
 
-      if (!reportResponse.ok) {
-        const errorData = await reportResponse.json().catch(() => ({}))
-        console.error('Failed to submit report:', reportResponse.status, errorData)
-        setSubmitStatus({
-          type: 'error',
-          message: errorData.detail || errorData.error || 'Failed to submit report. Please try again.',
-        })
-        return
-      }
-
-      const reportData = await reportResponse.json()
-      console.log('Report submitted and saved:', reportData)
-
-      // 2) Mark job as completed
-      const jobResponse = await fetch(`${API_BASE_URL}/api/jobs/${selectedJobId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'completed' }),
-      })
-
-      if (!jobResponse.ok) {
-        const errorData = await jobResponse.json().catch(() => ({}))
-        console.error('Failed to update job status to completed:', jobResponse.status, errorData)
-        setSubmitStatus({
-          type: 'warning',
-          message: 'Report saved, but failed to update job status. Please contact admin.',
-        })
-        return
-      }
-
-      const jobData = await jobResponse.json()
-      console.log('Job marked as completed:', jobData)
+      // 2) Mark job as completed using authenticated API
+      await api.patch(endpoints.jobs.detail(selectedJobId), { status: 'completed' })
 
       setSubmitStatus({
         type: 'success',
@@ -148,21 +118,29 @@ const SubmitReport = () => {
       }, 1500)
     } catch (error) {
       console.error('Error submitting report:', error)
+      const errorMessage = error.message || 'Failed to submit report. Please try again.'
       setSubmitStatus({
         type: 'error',
-        message: 'An unexpected error occurred while submitting the report. Please check your connection and try again.',
+        message: `${errorMessage} If the problem persists, contact support.`,
       })
+      // Don't reset form on error so user can retry
+      // Don't navigate away
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  // Find the selected job details for display
+  const selectedJob = inProgressJobs.find(job => String(job.id) === String(selectedJobId))
 
   return (
     <div className="p-6 md:p-8 lg:p-10">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-text-primary mb-2">Report Form</h1>
         <p className="text-text-secondary mb-8">
-          {selectedJobId ? `Submit report for Job #${selectedJobId}` : 'Submit a completion report'}
+          {selectedJobId && selectedJob
+            ? `Submit report for Job #${selectedJobId} - ${selectedJob.customer_name}`
+            : 'Submit a completion report for your accepted job'}
         </p>
 
         {submitStatus.message && (
@@ -186,7 +164,21 @@ const SubmitReport = () => {
               Select Job <span className="text-red-500">*</span>
             </label>
             {loadingJobs ? (
-              <p className="text-text-secondary">Loading available jobs...</p>
+              <div className="flex items-center gap-2 text-text-secondary">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                Loading available jobs...
+              </div>
+            ) : jobsError ? (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700 text-sm">{jobsError}</p>
+                <button
+                  type="button"
+                  onClick={fetchInProgressJobs}
+                  className="mt-2 text-primary hover:text-primary-dark text-sm font-medium"
+                >
+                  Retry
+                </button>
+              </div>
             ) : inProgressJobs.length > 0 ? (
               <select
                 id="jobSelector"
@@ -217,9 +209,9 @@ const SubmitReport = () => {
                 </button>
               </div>
             )}
-            {selectedJobId && (
+            {selectedJobId && selectedJob && (
               <p className="text-sm text-green-600 mt-2">
-                ✓ Submitting report for Job #{selectedJobId}
+                [OK] Submitting report for Job #{selectedJobId} - {selectedJob.customer_name}
               </p>
             )}
           </div>
@@ -316,10 +308,17 @@ const SubmitReport = () => {
           <div className="flex justify-center pt-4">
             <button
               type="submit"
-              className="btn-primary px-8 py-3"
-              disabled={isSubmitting}
+              className="btn-primary px-8 py-3 flex items-center gap-2"
+              disabled={isSubmitting || !selectedJobId}
             >
-              {isSubmitting ? 'Submitting...' : 'Submit'}
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Submitting...
+                </>
+              ) : (
+                'Submit'
+              )}
             </button>
           </div>
         </form>
@@ -329,5 +328,3 @@ const SubmitReport = () => {
 }
 
 export default SubmitReport
-
-

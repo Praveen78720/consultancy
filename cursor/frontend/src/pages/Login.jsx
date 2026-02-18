@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
-const Login = ({ onLogin }) => {
+const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const navigate = useNavigate()
+  const { login } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -15,14 +15,13 @@ const Login = ({ onLogin }) => {
     setIsLoading(true)
 
     try {
-      const success = await onLogin(email, password)
+      const result = await login(email, password)
 
-      if (success) {
-        // Navigation is handled by App.jsx based on user role
-        // No need to navigate here as the auth state change will trigger re-render
-      } else {
-        setError('Invalid email or password')
+      if (!result.success) {
+        setError(result.error || 'Invalid email or password')
       }
+      // Navigation is handled by App.jsx based on user role
+      // No need to navigate here as the auth state change will trigger re-render
     } catch (err) {
       setError('An error occurred during login. Please try again.')
     } finally {
@@ -134,6 +133,3 @@ const Login = ({ onLogin }) => {
 }
 
 export default Login
-
-
-

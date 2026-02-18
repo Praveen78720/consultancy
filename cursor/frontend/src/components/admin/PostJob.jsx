@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { API_BASE_URL } from '../../config'
+import { api, endpoints } from '../../services/api'
 
 const PostJob = () => {
   const [formData, setFormData] = useState({
@@ -10,16 +10,25 @@ const PostJob = () => {
     workDate: '',
     priority: '',
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [submitSuccess, setSubmitSuccess] = useState(false)
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     })
+    // Clear messages when user starts typing again
+    setSubmitError('')
+    setSubmitSuccess(false)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setIsSubmitting(true)
+    setSubmitError('')
+    setSubmitSuccess(false)
 
     const payload = {
       customer_name: formData.customerName,
@@ -32,23 +41,7 @@ const PostJob = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/jobs/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Failed to post job:', response.status, errorText)
-        alert('Failed to post job. Please check the server logs.')
-        return
-      }
-
-      const data = await response.json()
-      console.log('Job posted successfully:', data)
+      await api.post(endpoints.jobs.list, payload)
 
       // Reset form
       setFormData({
@@ -60,10 +53,14 @@ const PostJob = () => {
         priority: '',
       })
 
-      alert('Job posted successfully!')
+      setSubmitSuccess(true)
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setSubmitSuccess(false), 3000)
     } catch (error) {
       console.error('Error posting job:', error)
-      alert('An unexpected error occurred while posting the job.')
+      setSubmitError(error.message || 'Failed to post job. Please try again.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -72,6 +69,24 @@ const PostJob = () => {
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-text-primary mb-2">Post Job</h1>
         <p className="text-text-secondary mb-8">Create a new service job request</p>
+
+        {submitSuccess && (
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Job posted successfully!
+          </div>
+        )}
+
+        {submitError && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            {submitError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="card space-y-6">
           <div>
@@ -91,6 +106,7 @@ const PostJob = () => {
               placeholder="Enter customer or company name"
               className="input-field"
               required
+              disabled={isSubmitting}
             />
           </div>
 
@@ -107,6 +123,7 @@ const PostJob = () => {
               placeholder="Enter phone number"
               className="input-field"
               required
+              disabled={isSubmitting}
             />
           </div>
 
@@ -123,6 +140,7 @@ const PostJob = () => {
               placeholder="Enter location"
               className="input-field"
               required
+              disabled={isSubmitting}
             />
           </div>
 
@@ -139,6 +157,7 @@ const PostJob = () => {
               rows="4"
               className="input-field"
               required
+              disabled={isSubmitting}
             />
           </div>
 
@@ -154,6 +173,7 @@ const PostJob = () => {
               onChange={handleChange}
               className="input-field"
               required
+              disabled={isSubmitting}
             />
           </div>
 
@@ -168,6 +188,7 @@ const PostJob = () => {
               onChange={handleChange}
               className="input-field"
               required
+              disabled={isSubmitting}
             >
               <option value="">Select priority</option>
               <option value="high">High</option>
@@ -177,8 +198,19 @@ const PostJob = () => {
           </div>
 
           <div className="flex justify-center pt-4">
-            <button type="submit" className="btn-primary px-8 py-3">
-              Submit
+            <button
+              type="submit"
+              className="btn-primary px-8 py-3 flex items-center gap-2"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Submitting...
+                </>
+              ) : (
+                'Submit'
+              )}
             </button>
           </div>
         </form>
@@ -188,5 +220,3 @@ const PostJob = () => {
 }
 
 export default PostJob
-
-

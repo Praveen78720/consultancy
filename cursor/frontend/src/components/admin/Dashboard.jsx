@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { API_BASE_URL } from '../../config'
+import { api, endpoints } from '../../services/api'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -10,6 +10,9 @@ const Dashboard = () => {
   const [selectedCard, setSelectedCard] = useState(null)
   const [detailsData, setDetailsData] = useState(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [deletingUserId, setDeletingUserId] = useState(null)
+  const [userToDelete, setUserToDelete] = useState(null)
+  const [deleteSuccess, setDeleteSuccess] = useState('')
 
   useEffect(() => {
     fetchDashboardStats()
@@ -17,15 +20,12 @@ const Dashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/dashboard/stats/`)
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data)
-      } else {
-        setError('Failed to load dashboard statistics')
-      }
+      setLoading(true)
+      setError('')
+      const data = await api.get(endpoints.dashboard.stats)
+      setStats(data)
     } catch (err) {
-      setError('An error occurred while loading dashboard data')
+      setError(err.message || 'An error occurred while loading dashboard data')
     } finally {
       setLoading(false)
     }
@@ -38,20 +38,16 @@ const Dashboard = () => {
       let data = []
       switch (type) {
         case 'jobs':
-          const jobsRes = await fetch(`${API_BASE_URL}/api/jobs/`)
-          if (jobsRes.ok) data = await jobsRes.json()
+          data = await api.get(endpoints.jobs.list)
           break
         case 'rentals':
-          const rentalsRes = await fetch(`${API_BASE_URL}/api/rentals/`)
-          if (rentalsRes.ok) data = await rentalsRes.json()
+          data = await api.get(endpoints.rentals.list)
           break
         case 'devices':
-          const devicesRes = await fetch(`${API_BASE_URL}/api/devices/`)
-          if (devicesRes.ok) data = await devicesRes.json()
+          data = await api.get(endpoints.devices.list)
           break
         case 'users':
-          // Users data comes from stats, no detailed endpoint yet
-          data = []
+          data = await api.get(endpoints.users.list)
           break
         default:
           break
@@ -72,6 +68,47 @@ const Dashboard = () => {
   const closeModal = () => {
     setSelectedCard(null)
     setDetailsData(null)
+  }
+
+  const handleDeleteUser = (user) => {
+    setUserToDelete(user)
+  }
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return
+
+    try {
+      setDeletingUserId(userToDelete.id)
+      setDeleteSuccess('')
+
+      await api.post(endpoints.users.delete(userToDelete.id), {})
+
+      setDeleteSuccess(`User ${userToDelete.username} has been deactivated successfully`)
+
+      setDetailsData((prevData) =>
+        prevData.map((user) =>
+          user.id === userToDelete.id ? { ...user, is_active: false } : user
+        )
+      )
+
+      setTimeout(() => {
+        setDeleteSuccess('')
+      }, 3000)
+    } catch (err) {
+      console.error('Error deleting user:', err)
+      setError(err.message || 'Failed to delete user. Please try again.')
+    } finally {
+      setDeletingUserId(null)
+      setUserToDelete(null)
+    }
+  }
+
+  const cancelDeleteUser = () => {
+    setUserToDelete(null)
+  }
+
+  const handleRetry = () => {
+    fetchDashboardStats()
   }
 
   const StatCard = ({ title, value, subtitle, icon, color, onClick, clickable = true }) => (
@@ -249,20 +286,51 @@ const Dashboard = () => {
                     </div>
                   ))}
 
-                {selectedCard === 'users' && (
-                  <div className="text-center py-8">
-                    <p className="text-text-secondary mb-4">User management is available in Admin Settings</p>
-                    <button
-                      onClick={() => {
-                        closeModal()
-                        navigate('/admin/settings')
-                      }}
-                      className="btn-primary px-6 py-2"
+                {selectedCard === 'users' &&
+                  detailsData.map((user) => (
+                    <div
+                      key={user.id}
+                      className="p-4 bg-background-light rounded-lg hover:bg-gray-100 transition-colors"
                     >
-                      Go to Settings
-                    </button>
-                  </div>
-                )}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold text-text-primary">
+                            {user.username}
+                          </h4>
+                          <p className="text-sm text-text-secondary mt-1">{user.email}</p>
+                          <p className="text-xs text-text-secondary mt-1">
+                            Joined: {user.date_joined || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              user.role === 'admin'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
+                            {user.role}
+                          </span>
+                          <p className={`text-xs mt-1 ${user.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                            {user.is_active ? 'Active' : 'Inactive'}
+                          </p>
+                          {user.is_active && (
+                            <button
+                              onClick={() => handleDeleteUser(user)}
+                              disabled={deletingUserId === user.id}
+                              className="mt-2 px-3 py-1 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors flex items-center gap-1 ml-auto"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
               </div>
             ) : (
               <div className="text-center py-8">
@@ -270,6 +338,17 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+
+          {deleteSuccess && (
+            <div className="p-4 bg-green-50 border-t border-green-200">
+              <div className="flex items-center gap-2 text-green-700">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium">{deleteSuccess}</span>
+              </div>
+            </div>
+          )}
 
           <div className="p-4 border-t border-border-light bg-gray-50 flex justify-end">
             <button onClick={closeModal} className="btn-secondary px-6 py-2">
@@ -287,7 +366,10 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold text-text-primary mb-8">Admin Dashboard</h1>
           <div className="card">
-            <p className="text-text-secondary">Loading dashboard data...</p>
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-3 text-text-secondary">Loading dashboard data...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -300,7 +382,21 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold text-text-primary mb-8">Admin Dashboard</h1>
           <div className="card border border-red-300 bg-red-50">
-            <p className="text-red-700">{error}</p>
+            <div className="flex flex-col items-center justify-center py-8">
+              <svg className="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-red-700 mb-4">{error}</p>
+              <button
+                onClick={handleRetry}
+                className="btn-primary px-6 py-2 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Try Again
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -431,6 +527,60 @@ const Dashboard = () => {
 
       {/* Details Modal */}
       <DetailsModal />
+
+      {/* Delete Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-text-primary">Confirm User Removal</h3>
+                  <p className="text-sm text-text-secondary">This action cannot be undone</p>
+                </div>
+              </div>
+
+              <p className="text-text-primary mb-6">
+                Are you sure you want to remove <strong>{userToDelete.username}</strong>? This will deactivate the user account and they will no longer be able to log in.
+              </p>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={cancelDeleteUser}
+                  disabled={deletingUserId === userToDelete.id}
+                  className="btn-secondary px-4 py-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteUser}
+                  disabled={deletingUserId === userToDelete.id}
+                  className="btn-primary px-4 py-2 bg-red-600 hover:bg-red-700 flex items-center gap-2"
+                >
+                  {deletingUserId === userToDelete.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Removing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Remove User</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

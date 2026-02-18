@@ -1,43 +1,38 @@
 import { useEffect, useState } from 'react'
-import { API_BASE_URL } from '../../config'
+import { api, endpoints } from '../../services/api'
 
 const AvailableJobs = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [acceptingJobId, setAcceptingJobId] = useState(null)
 
   useEffect(() => {
     const fetchJobs = async () => {
       setLoading(true)
       setError('')
       try {
-        const response = await fetch(`${API_BASE_URL}/api/jobs/`)
-        if (!response.ok) {
-          const text = await response.text()
-          console.error('Failed to fetch jobs:', response.status, text)
-          setError('Failed to load jobs from server.')
-          return
-        }
-        const data = await response.json()
-        // Normalize backend fields into UI-friendly shape
-        const normalized = data.map((job) => ({
-          id: job.id,
-          customer: job.customer_name,
-          location: job.location,
-          issue: job.issue,
-          postedDate: job.work_date,
-          estimatedTime: '2-3 hours',
-          priority: job.priority,
-          status: job.status,
-          skills: [],
-        }))
-        setJobs(normalized)
+        const data = await api.get(endpoints.jobs.list)
+        // Only show 'open' jobs in the available jobs list
+        const openJobs = data
+          .filter((job) => job.status === 'open')
+          .map((job) => ({
+            id: job.id,
+            customer: job.customer_name,
+            location: job.location,
+            issue: job.issue,
+            postedDate: job.work_date,
+            estimatedTime: '2-3 hours',
+            priority: job.priority,
+            status: job.status,
+            skills: [],
+          }))
+        setJobs(openJobs)
       } catch (err) {
         console.error('Error fetching jobs:', err)
-        setError('An unexpected error occurred while loading jobs.')
+        setError(err.message || 'An unexpected error occurred while loading jobs.')
       } finally {
         setLoading(false)
       }
@@ -46,14 +41,36 @@ const AvailableJobs = () => {
     fetchJobs()
   }, [])
 
+  const handleAcceptJob = async (jobId) => {
+    const job = jobs.find((j) => j.id === jobId)
+    if (!job) return
+
+    setAcceptingJobId(jobId)
+
+    try {
+      // Update job status to 'in_progress' (accepted)
+      await api.patch(endpoints.jobs.detail(jobId), { status: 'in_progress' })
+
+      // Remove accepted job from the available jobs list
+      setJobs((prev) => prev.filter((j) => j.id !== jobId))
+
+      // Show success message
+      alert(`Job #${jobId} accepted successfully! View it in On-going Job page.`)
+    } catch (error) {
+      console.error('Error accepting job:', error)
+      alert(error.message || 'Failed to accept job. Please try again.')
+    } finally {
+      setAcceptingJobId(null)
+    }
+  }
+
   const filteredJobs = jobs.filter((job) => {
-    const matchesSearch = 
+    const matchesSearch =
       job.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.issue.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesPriority = priorityFilter === 'all' || job.priority === priorityFilter
-    const matchesStatus = statusFilter === 'all' || job.status === statusFilter
-    return matchesSearch && matchesPriority && matchesStatus
+    return matchesSearch && matchesPriority
   })
 
   const getPriorityColor = (priority) => {
@@ -69,61 +86,12 @@ const AvailableJobs = () => {
     }
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'open':
-        return 'bg-status-open'
-      case 'inProgress':
-        return 'bg-status-inProgress'
-      case 'completed':
-        return 'bg-status-completed'
-      default:
-        return 'bg-text-secondary'
-    }
-  }
-
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   })
-
-  const handleAcceptJob = async (jobId) => {
-    const job = jobs.find((j) => j.id === jobId)
-    if (!job) return
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'in_progress' }),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`Failed to accept job #${jobId}:`, response.status, errorText)
-        alert('Failed to accept job. Please try again.')
-        return
-      }
-
-      const updated = await response.json()
-      console.log('Job accepted and updated:', updated)
-
-      // Update local state so UI reflects the change immediately
-      setJobs((prev) =>
-        prev.map((j) =>
-          j.id === jobId ? { ...j, status: 'in_progress' } : j
-        )
-      )
-      alert(`Job #${jobId} accepted successfully!`)
-    } catch (error) {
-      console.error('Error accepting job:', error)
-      alert('An unexpected error occurred while accepting the job.')
-    }
-  }
 
   return (
     <div className="p-6 md:p-8 lg:p-10">
@@ -153,7 +121,7 @@ const AvailableJobs = () => {
 
         {/* Search and Filter Bar */}
         <div className="card mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -176,16 +144,6 @@ const AvailableJobs = () => {
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-field"
-            >
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="inProgress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
           </div>
         </div>
 
@@ -203,6 +161,16 @@ const AvailableJobs = () => {
             </div>
           )}
 
+          {!loading && !error && filteredJobs.length === 0 && (
+            <div className="card text-center py-12">
+              <svg className="w-16 h-16 text-text-secondary mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <p className="text-text-secondary text-lg">No available jobs at the moment.</p>
+              <p className="text-text-secondary text-sm mt-2">Check back later for new job postings.</p>
+            </div>
+          )}
+
           {filteredJobs.map((job) => (
             <div key={job.id} className="card">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -212,8 +180,8 @@ const AvailableJobs = () => {
                     <span className={`px-3 py-1 rounded-full text-sm font-medium text-white ${getPriorityColor(job.priority)}`}>
                       {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium text-white ${getStatusColor(job.status)}`}>
-                      {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                    <span className="px-3 py-1 rounded-full text-sm font-medium text-white bg-status-open">
+                      Open
                     </span>
                   </div>
 
@@ -262,12 +230,22 @@ const AvailableJobs = () => {
 
                 <button
                   onClick={() => handleAcceptJob(job.id)}
-                  className="btn-primary flex items-center gap-2 whitespace-nowrap"
+                  disabled={acceptingJobId === job.id}
+                  className="btn-primary flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Accept Job
+                  {acceptingJobId === job.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Accepting...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Accept Job
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -279,5 +257,3 @@ const AvailableJobs = () => {
 }
 
 export default AvailableJobs
-
-
