@@ -37,11 +37,77 @@ const RentalProduct = () => {
     }
   }
 
+  // Helper function to format date to YYYY-MM-DD
+  const formatDate = (date) => {
+    return date.toISOString().split('T')[0]
+  }
+
+  // Helper function to calculate days between two dates
+  const calculateDaysBetween = (fromDate, toDate) => {
+    const from = new Date(fromDate)
+    const to = new Date(toDate)
+    const diffTime = to - from
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  // Helper function to add days to a date
+  const addDays = (date, days) => {
+    const result = new Date(date)
+    result.setDate(result.getDate() + days)
+    return formatDate(result)
+  }
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
+    const { name, value } = e.target
+    let updatedFormData = { ...formData, [name]: value }
+
+    // Handle rental days change
+    if (name === 'rentalDays' && value) {
+      const days = parseInt(value)
+      if (days > 0) {
+        // If fromDate not set, use today
+        if (!formData.fromDate) {
+          const today = formatDate(new Date())
+          updatedFormData.fromDate = today
+          updatedFormData.toDate = addDays(today, days)
+        } else {
+          // If fromDate is set, calculate toDate
+          updatedFormData.toDate = addDays(formData.fromDate, days)
+        }
+      }
+    }
+
+    // Handle fromDate change
+    if (name === 'fromDate' && value) {
+      if (formData.rentalDays && !formData.toDate) {
+        // If rentalDays is set but toDate isn't, calculate toDate
+        updatedFormData.toDate = addDays(value, parseInt(formData.rentalDays))
+      } else if (formData.toDate) {
+        // If toDate is set, recalculate rentalDays
+        const days = calculateDaysBetween(value, formData.toDate)
+        if (days >= 0) {
+          updatedFormData.rentalDays = days
+        }
+      }
+    }
+
+    // Handle toDate change
+    if (name === 'toDate' && value) {
+      if (formData.fromDate) {
+        // Calculate rentalDays based on fromDate and toDate
+        const days = calculateDaysBetween(formData.fromDate, value)
+        if (days >= 0) {
+          updatedFormData.rentalDays = days
+        }
+      } else if (formData.rentalDays) {
+        // If rentalDays is set but fromDate isn't, calculate fromDate
+        const fromDate = addDays(value, -parseInt(formData.rentalDays))
+        updatedFormData.fromDate = fromDate
+      }
+    }
+
+    setFormData(updatedFormData)
     // Clear message when user starts typing
     if (message.text) setMessage({ type: '', text: '' })
   }

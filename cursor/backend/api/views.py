@@ -263,8 +263,8 @@ def get_dashboard_stats(request):
     completed_jobs = Job.objects.filter(status='completed').count()
 
     total_rentals = Rental.objects.count()
-    active_rentals = Rental.objects.filter(to_date__gte=timezone.now().date()).count()
-    completed_rentals = Rental.objects.filter(to_date__lt=timezone.now().date()).count()
+    active_rentals = Rental.objects.filter(status='active').count()
+    completed_rentals = Rental.objects.filter(status='returned').count()
 
     total_devices = Device.objects.count()
     available_devices = Device.objects.filter(availability='available').count()
