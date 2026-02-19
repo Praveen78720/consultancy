@@ -285,5 +285,150 @@ input[type="date"]::-webkit-datetime-edit-year-field {
   @apply text-text-secondary/60;
 }
 
+/* ============================================
+   Responsive & Touch-Friendly Styles
+   ============================================ */
+
+/* Touch Target - Minimum 44px for better mobile tap */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Responsive Container */
+.responsive-container {
+  @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Mobile-first spacing */
+@media (max-width: 640px) {
+  .card {
+    @apply p-4;
+  }
+  
+  .input-field {
+    @apply py-3 px-3 text-base;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    @apply py-3 px-4 text-base w-full;
+  }
+  
+  h1 {
+    @apply text-2xl;
+  }
+  
+  h2 {
+    @apply text-xl;
+  }
+}
+
+/* Tablet spacing */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .card {
+    @apply p-5;
+  }
+}
+
+/* Desktop spacing */
+@media (min-width: 1025px) {
+  .card {
+    @apply p-6;
+  }
+}
+
+/* Prevent horizontal scroll on mobile */
+body {
+  @apply overflow-x-hidden;
+}
+
+/* Responsive grid helpers */
+.grid-responsive-1 {
+  @apply grid-cols-1;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive-2 {
+    @apply grid-cols-2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive-3 {
+    @apply grid-cols-3;
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid-responsive-4 {
+    @apply grid-cols-4;
+  }
+}
+
+/* Smooth scrolling for mobile */
+@media (hover: none) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  button,
+  a,
+  input,
+  select {
+    -webkit-tap-highlight-color: rgba(47, 127, 251, 0.2);
+  }
+}
+
+/* Hide scrollbar on mobile but allow scrolling */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Responsive text truncation */
+.truncate-responsive {
+  @apply truncate;
+}
+
+@media (max-width: 640px) {
+  .truncate-responsive {
+    @apply max-w-[150px];
+  }
+}
+
+/* Mobile-friendly form labels */
+@media (max-width: 640px) {
+  label {
+    @apply text-sm;
+  }
+}
+
+/* Responsive padding for main content */
+.main-content {
+  @apply p-4 sm:p-6 lg:p-8;
+}
+
+/* Responsive Modal */
+@media (max-width: 640px) {
+  .modal-content {
+    @apply mx-2 max-h-[90vh];
+  }
+}
+
+/* Ensure buttons are easily tappable */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  .btn-primary,
+  .btn-secondary,
+  a[role="button"] {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}
+
 
 
