@@ -239,31 +239,33 @@ const RentalProduct = () => {
               <label htmlFor="fromDate" className="block text-sm font-semibold text-text-primary mb-2">
                 From date
               </label>
-              <input
-                type="date"
-                id="fromDate"
-                name="fromDate"
-                value={formData.fromDate}
-                onChange={handleChange}
-                className="input-field"
-                required
-                disabled={isSubmitting}
-              />
+              <div className="date-input-wrapper">
+                <input
+                  type="date"
+                  id="fromDate"
+                  name="fromDate"
+                  value={formData.fromDate}
+                  onChange={handleChange}
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
             </div>
             <div>
               <label htmlFor="toDate" className="block text-sm font-semibold text-text-primary mb-2">
                 To date
               </label>
-              <input
-                type="date"
-                id="toDate"
-                name="toDate"
-                value={formData.toDate}
-                onChange={handleChange}
-                className="input-field"
-                required
-                disabled={isSubmitting}
-              />
+              <div className="date-input-wrapper">
+                <input
+                  type="date"
+                  id="toDate"
+                  name="toDate"
+                  value={formData.toDate}
+                  onChange={handleChange}
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
             </div>
           </div>
 

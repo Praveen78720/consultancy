@@ -303,10 +303,10 @@ def get_dashboard_stats(request):
 @permission_classes([IsAuthenticated])
 def get_all_users(request):
     """
-    Get all users with their details.
+    Get all active users with their details.
     Requires authentication (admin only recommended).
     """
-    users = User.objects.all().order_by('-date_joined')
+    users = User.objects.filter(is_active=True).order_by('-date_joined')
     user_list = []
     
     for user in users:

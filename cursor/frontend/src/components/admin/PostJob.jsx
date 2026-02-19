@@ -165,16 +165,17 @@ const PostJob = () => {
             <label htmlFor="workDate" className="block text-sm font-semibold text-text-primary mb-2">
               Work date
             </label>
-            <input
-              type="date"
-              id="workDate"
-              name="workDate"
-              value={formData.workDate}
-              onChange={handleChange}
-              className="input-field"
-              required
-              disabled={isSubmitting}
-            />
+            <div className="date-input-wrapper">
+              <input
+                type="date"
+                id="workDate"
+                name="workDate"
+                value={formData.workDate}
+                onChange={handleChange}
+                required
+                disabled={isSubmitting}
+              />
+            </div>
           </div>
 
           <div>

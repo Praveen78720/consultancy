@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, endpoints } from '../../services/api'
+import { useToast } from '../Toast'
+import Breadcrumbs from '../Breadcrumbs'
+import DataTable from '../DataTable'
+import LoadingSkeleton from '../LoadingSkeleton'
+import AnimatedList from '../AnimatedList'
 
 const Dashboard = () => {
   const navigate = useNavigate()
+  const { success: showSuccessToast, error: showErrorToast } = useToast()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -12,7 +18,6 @@ const Dashboard = () => {
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [deletingUserId, setDeletingUserId] = useState(null)
   const [userToDelete, setUserToDelete] = useState(null)
-  const [deleteSuccess, setDeleteSuccess] = useState('')
 
   useEffect(() => {
     fetchDashboardStats()
@@ -79,24 +84,18 @@ const Dashboard = () => {
 
     try {
       setDeletingUserId(userToDelete.id)
-      setDeleteSuccess('')
 
       await api.post(endpoints.users.delete(userToDelete.id), {})
 
-      setDeleteSuccess(`User ${userToDelete.username} has been deactivated successfully`)
+      showSuccessToast(`User ${userToDelete.username} has been deactivated successfully`)
 
+      // Remove user from the list
       setDetailsData((prevData) =>
-        prevData.map((user) =>
-          user.id === userToDelete.id ? { ...user, is_active: false } : user
-        )
+        prevData.filter((user) => user.id !== userToDelete.id)
       )
-
-      setTimeout(() => {
-        setDeleteSuccess('')
-      }, 3000)
     } catch (err) {
       console.error('Error deleting user:', err)
-      setError(err.message || 'Failed to delete user. Please try again.')
+      showErrorToast(err.message || 'Failed to delete user. Please try again.')
     } finally {
       setDeletingUserId(null)
       setUserToDelete(null)
@@ -111,37 +110,51 @@ const Dashboard = () => {
     fetchDashboardStats()
   }
 
-  const StatCard = ({ title, value, subtitle, icon, color, onClick, clickable = true }) => (
-    <div
-      onClick={onClick}
-      className={`card hover:shadow-lg transition-all ${
-        clickable ? 'cursor-pointer hover:scale-[1.02]' : ''
-      }`}
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-text-secondary text-sm font-medium">{title}</p>
-          <h3 className="text-3xl font-bold text-text-primary mt-2">{value}</h3>
-          {subtitle && <p className="text-sm text-text-secondary mt-1">{subtitle}</p>}
-        </div>
-        <div className={`w-12 h-12 rounded-lg ${color} flex items-center justify-center`}>
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-          </svg>
+  const StatCard = ({ title, value, subtitle, icon, color, onClick, clickable = true }) => {
+    const gradientColors = {
+      'bg-blue-500': 'from-blue-500 to-blue-600',
+      'bg-green-500': 'from-green-500 to-green-600',
+      'bg-purple-500': 'from-purple-500 to-purple-600',
+      'bg-orange-500': 'from-orange-500 to-orange-600',
+    }
+    
+    const gradient = gradientColors[color] || 'from-primary to-primary-light'
+    
+    return (
+      <div
+        onClick={onClick}
+        className={`card card-interactive overflow-hidden ${
+          clickable ? 'cursor-pointer group' : ''
+        }`}
+      >
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
+        <div className="relative">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-text-secondary text-sm font-semibold uppercase tracking-wide">{title}</p>
+              <h3 className="text-4xl font-bold text-text-primary mt-2 bg-gradient-to-r from-text-primary to-text-secondary bg-clip-text">{value}</h3>
+              {subtitle && <p className="text-sm text-text-secondary/80 mt-2 font-medium">{subtitle}</p>}
+            </div>
+            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg shadow-${color.split('-')[1]}-500/30 group-hover:scale-110 transition-transform duration-300`}>
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
+              </svg>
+            </div>
+          </div>
+          {clickable && (
+            <div className="mt-5 pt-4 border-t border-border-light/50">
+              <p className="text-xs text-primary font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
+                Click for details
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </p>
+            </div>
+          )}
         </div>
       </div>
-      {clickable && (
-        <div className="mt-4 pt-3 border-t border-border-light">
-          <p className="text-xs text-primary font-medium flex items-center gap-1">
-            Click for details
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </p>
-        </div>
-      )}
-    </div>
-  )
+    )
+  }
 
   // Modal to show details
   const DetailsModal = () => {
@@ -286,51 +299,61 @@ const Dashboard = () => {
                     </div>
                   ))}
 
-                {selectedCard === 'users' &&
-                  detailsData.map((user) => (
-                    <div
-                      key={user.id}
-                      className="p-4 bg-background-light rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-semibold text-text-primary">
-                            {user.username}
-                          </h4>
-                          <p className="text-sm text-text-secondary mt-1">{user.email}</p>
-                          <p className="text-xs text-text-secondary mt-1">
-                            Joined: {user.date_joined || 'N/A'}
-                          </p>
-                        </div>
-                        <div className="text-right">
+                {selectedCard === 'users' && (
+                  <DataTable
+                    data={detailsData}
+                    columns={[
+                      {
+                        key: 'username',
+                        title: 'Username',
+                        searchable: true,
+                      },
+                      {
+                        key: 'email',
+                        title: 'Email',
+                        searchable: true,
+                      },
+                      {
+                        key: 'role',
+                        title: 'Role',
+                        render: (value) => (
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              user.role === 'admin'
+                              value === 'admin'
                                 ? 'bg-red-100 text-red-800'
                                 : 'bg-blue-100 text-blue-800'
                             }`}
                           >
-                            {user.role}
+                            {value}
                           </span>
-                          <p className={`text-xs mt-1 ${user.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                            {user.is_active ? 'Active' : 'Inactive'}
-                          </p>
-                          {user.is_active && (
-                            <button
-                              onClick={() => handleDeleteUser(user)}
-                              disabled={deletingUserId === user.id}
-                              className="mt-2 px-3 py-1 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors flex items-center gap-1 ml-auto"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                        ),
+                      },
+                      {
+                        key: 'date_joined',
+                        title: 'Joined',
+                        render: (value) => value || 'N/A',
+                      },
+                    ]}
+                    rowActions={[
+                      {
+                        label: 'Remove User',
+                        icon: (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        ),
+                        onClick: (user) => handleDeleteUser(user),
+                        disabled: (user) => deletingUserId === user.id,
+                        className: 'text-red-600 hover:text-red-800 hover:bg-red-50',
+                      },
+                    ]}
+                    keyField="id"
+                    searchable={true}
+                    searchPlaceholder="Search users..."
+                    pagination={true}
+                    itemsPerPage={10}
+                  />
+                )}
               </div>
             ) : (
               <div className="text-center py-8">
@@ -339,16 +362,7 @@ const Dashboard = () => {
             )}
           </div>
 
-          {deleteSuccess && (
-            <div className="p-4 bg-green-50 border-t border-green-200">
-              <div className="flex items-center gap-2 text-green-700">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="font-medium">{deleteSuccess}</span>
-              </div>
-            </div>
-          )}
+
 
           <div className="p-4 border-t border-border-light bg-gray-50 flex justify-end">
             <button onClick={closeModal} className="btn-secondary px-6 py-2">
@@ -362,14 +376,14 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="p-6 md:p-8 lg:p-10">
+      <div className="p-6 md:p-8 lg:p-10 page-transition">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-text-primary mb-8">Admin Dashboard</h1>
-          <div className="card">
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <span className="ml-3 text-text-secondary">Loading dashboard data...</span>
-            </div>
+          <LoadingSkeleton type="page-header" className="mb-8" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <LoadingSkeleton type="stat-card" count={4} />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <LoadingSkeleton type="card" count={2} />
           </div>
         </div>
       </div>
@@ -404,15 +418,16 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="p-6 md:p-8 lg:p-10">
+    <div className="p-6 md:p-8 lg:p-10 page-transition">
       <div className="max-w-7xl mx-auto">
+        <Breadcrumbs />
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-text-primary mb-2">Admin Dashboard</h1>
           <p className="text-text-secondary">Overview of your service and rental operations</p>
         </div>
 
         {/* Quick Stats Grid - Clickable Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <AnimatedList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" staggerDelay={0.1}>
           <StatCard
             title="Total Jobs"
             value={stats?.jobs?.total || 0}
@@ -445,82 +460,98 @@ const Dashboard = () => {
             color="bg-orange-500"
             onClick={() => handleCardClick('users')}
           />
-        </div>
+        </AnimatedList>
 
         {/* Detailed Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Jobs Breakdown */}
-          <div className="card">
-            <h2 className="text-xl font-semibold text-text-primary mb-6">Job Status Breakdown</h2>
-            <div className="space-y-4">
+          <div className="card card-gradient">
+            <h2 className="text-xl font-semibold text-text-primary mb-6 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary"></span>
+              Job Status Breakdown
+            </h2>
+            <AnimatedList className="space-y-3" staggerDelay={0.05}>
               <div
-                className="flex items-center justify-between p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl cursor-pointer hover:from-blue-100 hover:to-blue-200/50 transition-all hover:shadow-md group"
                 onClick={() => navigate('/admin/job-history')}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-status-open"></div>
-                  <span className="text-text-primary">Open Jobs</span>
+                  <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                    <span className="text-white font-bold text-sm">{stats?.jobs?.open || 0}</span>
+                  </div>
+                  <span className="text-text-primary font-medium">Open Jobs</span>
                 </div>
-                <span className="font-semibold text-text-primary">{stats?.jobs?.open || 0}</span>
+                <svg className="w-5 h-5 text-blue-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </div>
               <div
-                className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg cursor-pointer hover:bg-yellow-100 transition-colors"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-yellow-100/50 rounded-xl cursor-pointer hover:from-yellow-100 hover:to-yellow-200/50 transition-all hover:shadow-md group"
                 onClick={() => navigate('/admin/job-history')}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-priority-medium"></div>
-                  <span className="text-text-primary">In Progress</span>
+                  <div className="w-10 h-10 rounded-xl bg-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-500/30 group-hover:scale-110 transition-transform">
+                    <span className="text-white font-bold text-sm">{stats?.jobs?.in_progress || 0}</span>
+                  </div>
+                  <span className="text-text-primary font-medium">In Progress</span>
                 </div>
-                <span className="font-semibold text-text-primary">{stats?.jobs?.in_progress || 0}</span>
+                <svg className="w-5 h-5 text-yellow-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </div>
               <div
-                className="flex items-center justify-between p-3 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition-colors"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-green-100/50 rounded-xl cursor-pointer hover:from-green-100 hover:to-green-200/50 transition-all hover:shadow-md group"
                 onClick={() => navigate('/admin/job-history')}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-status-completed"></div>
-                  <span className="text-text-primary">Completed</span>
+                  <div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <span className="text-white font-bold text-sm">{stats?.jobs?.completed || 0}</span>
+                  </div>
+                  <span className="text-text-primary font-medium">Completed</span>
                 </div>
-                <span className="font-semibold text-text-primary">{stats?.jobs?.completed || 0}</span>
+                <svg className="w-5 h-5 text-green-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </div>
-            </div>
+            </AnimatedList>
           </div>
 
           {/* Rentals Breakdown */}
-          <div className="card">
-            <h2 className="text-xl font-semibold text-text-primary mb-6">Rental Status Breakdown</h2>
-            <div className="space-y-4">
+          <div className="card card-gradient">
+            <h2 className="text-xl font-semibold text-text-primary mb-6 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              Rental Status Breakdown
+            </h2>
+            <AnimatedList className="space-y-3" staggerDelay={0.05}>
               <div
-                className="flex items-center justify-between p-3 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition-colors"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-green-100/50 rounded-xl cursor-pointer hover:from-green-100 hover:to-green-200/50 transition-all hover:shadow-md group"
                 onClick={() => navigate('/admin/rental-history')}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                  <span className="text-text-primary">Active Rentals</span>
+                  <div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <span className="text-white font-bold text-sm">{stats?.rentals?.active || 0}</span>
+                  </div>
+                  <span className="text-text-primary font-medium">Active Rentals</span>
                 </div>
-                <span className="font-semibold text-text-primary">{stats?.rentals?.active || 0}</span>
+                <svg className="w-5 h-5 text-green-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </div>
               <div
-                className="flex items-center justify-between p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl cursor-pointer hover:from-blue-100 hover:to-blue-200/50 transition-all hover:shadow-md group"
                 onClick={() => navigate('/admin/rental-history')}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-                  <span className="text-text-primary">Completed Rentals</span>
+                  <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                    <span className="text-white font-bold text-sm">{stats?.rentals?.completed || 0}</span>
+                  </div>
+                  <span className="text-text-primary font-medium">Completed Rentals</span>
                 </div>
-                <span className="font-semibold text-text-primary">{stats?.rentals?.completed || 0}</span>
+                <svg className="w-5 h-5 text-blue-500 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </div>
-              <div
-                className="flex items-center justify-between p-3 bg-purple-50 rounded-lg cursor-pointer hover:bg-purple-100 transition-colors"
-                onClick={() => navigate('/admin/available-devices')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-purple-500"></div>
-                  <span className="text-text-primary">Available Devices</span>
-                </div>
-                <span className="font-semibold text-text-primary">{stats?.devices?.available || 0}</span>
-              </div>
-            </div>
+            </AnimatedList>
           </div>
         </div>
       </div>

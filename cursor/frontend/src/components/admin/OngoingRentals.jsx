@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { api, endpoints } from '../../services/api'
+import { useToast } from '../Toast'
+import Breadcrumbs from '../Breadcrumbs'
 
 const OngoingRentals = () => {
+  const { success: showSuccessToast, error: showErrorToast } = useToast()
   const [rentals, setRentals] = useState([])
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [returningId, setReturningId] = useState(null)
-  const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
     fetchRentalsAndDevices()
@@ -79,27 +81,22 @@ const OngoingRentals = () => {
     try {
       setReturningId(rentalId)
       setError('')
-      setSuccessMessage('')
 
       const response = await api.post(
         endpoints.rentals.return(rentalId),
         {}
       )
 
-      setSuccessMessage(
-        `Device returned successfully! ${response.device_serial} is now available.`
+      showSuccessToast(
+        `Device ${response.device_serial} marked as returned successfully!`
       )
 
       setRentals((prevRentals) =>
         prevRentals.filter((rental) => rental.id !== rentalId)
       )
-
-      setTimeout(() => {
-        setSuccessMessage('')
-      }, 3000)
     } catch (err) {
       console.error('Error returning rental:', err)
-      setError(err.message || 'Failed to return rental. Please try again.')
+      showErrorToast(err.message || 'Failed to return rental. Please try again.')
     } finally {
       setReturningId(null)
     }
@@ -332,6 +329,7 @@ const OngoingRentals = () => {
   return (
     <div className="p-6 md:p-8 lg:p-10">
       <div className="max-w-6xl mx-auto">
+        <Breadcrumbs />
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-text-primary mb-2">
@@ -350,25 +348,6 @@ const OngoingRentals = () => {
             </div>
           </div>
         </div>
-
-        {successMessage && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-            <svg
-              className="w-6 h-6 text-green-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-green-700 font-medium">{successMessage}</p>
-          </div>
-        )}
 
         {rentals.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

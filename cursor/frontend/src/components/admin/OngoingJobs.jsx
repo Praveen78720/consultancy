@@ -1,12 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { api, endpoints } from '../../services/api'
 import Breadcrumbs from '../Breadcrumbs'
 import EmptyState from '../EmptyState'
 import DataTable from '../DataTable'
 import FilterPanel from '../FilterPanel'
+import LoadingSkeleton from '../LoadingSkeleton'
 
-const JobHistory = () => {
-  const [allJobs, setAllJobs] = useState([])
+const OngoingJobs = () => {
+  const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedJob, setSelectedJob] = useState(null)
@@ -22,44 +23,34 @@ const JobHistory = () => {
       setLoading(true)
       setError('')
       const data = await api.get(endpoints.jobs.list)
-      setAllJobs(data)
+      // Filter for ongoing jobs only
+      const ongoingJobs = data.filter((job) => job.status === 'in_progress')
+      setJobs(ongoingJobs)
     } catch (error) {
-      console.error('Error fetching jobs:', error)
-      setError(error.message || 'Failed to load job history')
+      console.error('Error fetching ongoing jobs:', error)
+      setError(error.message || 'Failed to load ongoing jobs')
     } finally {
       setLoading(false)
     }
   }
 
-  // Filter jobs
-  const filteredJobs = useMemo(() => {
-    return allJobs.filter((job) => {
-      // Status filter
-      if (activeFilters.status && activeFilters.status !== 'all') {
-        if (job.status !== activeFilters.status) return false
-      }
+  // Apply filters
+  const filteredJobs = jobs.filter((job) => {
+    // Priority filter
+    if (activeFilters.priority && activeFilters.priority !== 'all') {
+      if (job.priority !== activeFilters.priority) return false
+    }
 
-      // Priority filter
-      if (activeFilters.priority && activeFilters.priority !== 'all') {
-        if (job.priority !== activeFilters.priority) return false
-      }
+    // Date range filter
+    if (activeFilters.date_from && job.work_date) {
+      if (new Date(job.work_date) < new Date(activeFilters.date_from)) return false
+    }
+    if (activeFilters.date_to && job.work_date) {
+      if (new Date(job.work_date) > new Date(activeFilters.date_to)) return false
+    }
 
-      // Date range filter
-      if (activeFilters.date_from && job.work_date) {
-        if (new Date(job.work_date) < new Date(activeFilters.date_from)) return false
-      }
-      if (activeFilters.date_to && job.work_date) {
-        if (new Date(job.work_date) > new Date(activeFilters.date_to)) return false
-      }
-
-      return true
-    })
-  }, [allJobs, activeFilters])
-
-  // Split into categories
-  const ongoingJobs = filteredJobs.filter((job) => job.status === 'in_progress')
-  const completedJobs = filteredJobs.filter((job) => job.status === 'completed')
-  const openJobs = filteredJobs.filter((job) => job.status === 'open')
+    return true
+  })
 
   const handleFilterChange = (key, value) => {
     setActiveFilters((prev) => ({ ...prev, [key]: value }))
@@ -77,19 +68,6 @@ const JobHistory = () => {
   const closeModal = () => {
     setShowModal(false)
     setSelectedJob(null)
-  }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'open':
-        return 'bg-blue-100 text-blue-800'
-      case 'in_progress':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
   }
 
   const getPriorityColor = (priority) => {
@@ -120,7 +98,7 @@ const JobHistory = () => {
       key: 'location',
       title: 'Location',
       render: (value) => (
-        <span className="truncate max-w-[150px] inline-block" title={value}>
+        <span className="truncate max-w-[200px] inline-block" title={value}>
           {value}
         </span>
       ),
@@ -140,15 +118,6 @@ const JobHistory = () => {
       ),
     },
     {
-      key: 'status',
-      title: 'Status',
-      render: (value) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-          {value.replace('_', ' ')}
-        </span>
-      ),
-    },
-    {
       key: 'assigned_to_details',
       title: 'Assigned To',
       render: (value) => {
@@ -161,6 +130,14 @@ const JobHistory = () => {
             <span>{value.username}</span>
           </div>
         )
+      },
+    },
+    {
+      key: 'assigned_at',
+      title: 'Assigned At',
+      render: (value) => {
+        if (!value) return <span className="text-text-secondary">-</span>
+        return new Date(value).toLocaleString()
       },
     },
   ]
@@ -179,16 +156,6 @@ const JobHistory = () => {
   ]
 
   const filterConfig = [
-    {
-      key: 'status',
-      label: 'Status',
-      type: 'select',
-      options: [
-        { value: 'open', label: 'Open' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'completed', label: 'Completed' },
-      ],
-    },
     {
       key: 'priority',
       label: 'Priority',
@@ -214,7 +181,7 @@ const JobHistory = () => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-          <div className="bg-primary p-6 text-white flex justify-between items-center">
+          <div className="bg-yellow-600 p-6 text-white flex justify-between items-center">
             <h2 className="text-2xl font-bold">Job #{selectedJob.id} Details</h2>
             <button onClick={closeModal} className="text-white hover:text-gray-200 transition-colors">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -257,8 +224,8 @@ const JobHistory = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-text-secondary">Status</label>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedJob.status)}`}>
-                    {selectedJob.status}
+                  <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    In Progress
                   </span>
                 </div>
                 <div>
@@ -268,7 +235,7 @@ const JobHistory = () => {
               </div>
             </div>
 
-            <div className="mb-8">
+            <div>
               <h3 className="text-lg font-semibold text-text-primary mb-4 border-b border-border-light pb-2">
                 Employee Information
               </h3>
@@ -299,28 +266,10 @@ const JobHistory = () => {
                 </div>
               ) : (
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-text-secondary">
-                    {selectedJob.status === 'open'
-                      ? 'This job has not been assigned to any employee yet.'
-                      : 'This job was handled by a former employee (user no longer exists in the system).'}
-                  </p>
+                  <p className="text-text-secondary">This job has not been assigned to any employee yet.</p>
                 </div>
               )}
             </div>
-
-            {selectedJob.status === 'completed' && (
-              <div>
-                <h3 className="text-lg font-semibold text-text-primary mb-4 border-b border-border-light pb-2">
-                  Completion Information
-                </h3>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <p className="text-green-800">
-                    This job has been completed by {assignedEmployee ? assignedEmployee.username : 'the assigned employee'}.
-                  </p>
-                  <p className="text-sm text-green-600 mt-2">Check the Submit Report section for detailed completion report.</p>
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="p-4 border-t border-border-light bg-gray-50 flex justify-end">
@@ -333,30 +282,28 @@ const JobHistory = () => {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="p-6 md:p-8 lg:p-10">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-text-primary mb-2">Job History</h1>
-          <p className="text-text-secondary mb-8">Loading job history...</p>
-          <div className="card">
-            <div className="animate-pulse space-y-4">
-              <div className="h-10 bg-gray-200 rounded w-full"></div>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-12 bg-gray-100 rounded w-full"></div>
-              ))}
+  return (
+    <div className="p-6 md:p-8 lg:p-10">
+      <div className="max-w-7xl mx-auto">
+        <Breadcrumbs />
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-text-primary mb-2">Ongoing Jobs</h1>
+            <p className="text-text-secondary">View and manage jobs currently in progress</p>
+          </div>
+          <div className="mt-4 md:mt-0 flex items-center gap-4">
+            <div className="bg-yellow-50 px-4 py-2 rounded-lg border border-yellow-200">
+              <span className="text-2xl font-bold text-yellow-700">{filteredJobs.length}</span>
+              <span className="text-sm text-yellow-600 ml-2">In Progress</span>
             </div>
           </div>
         </div>
-      </div>
-    )
-  }
 
-  if (error) {
-    return (
-      <div className="p-6 md:p-8 lg:p-10">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-text-primary mb-2">Job History</h1>
+        {loading ? (
+          <div className="card">
+            <LoadingSkeleton type="table-row" count={5} />
+          </div>
+        ) : error ? (
           <div className="card border border-red-300 bg-red-50">
             <div className="flex flex-col items-center justify-center py-8">
               <svg className="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -368,27 +315,7 @@ const JobHistory = () => {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="p-6 md:p-8 lg:p-10">
-      <div className="max-w-7xl mx-auto">
-        <Breadcrumbs />
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary mb-2">Job History</h1>
-            <p className="text-text-secondary">View and manage all service jobs</p>
-          </div>
-          <div className="mt-4 md:mt-0 text-right">
-            <p className="text-3xl font-bold text-text-primary">{filteredJobs.length}</p>
-            <p className="text-sm text-text-secondary">Total Jobs</p>
-          </div>
-        </div>
-
-        {allJobs.length > 0 ? (
+        ) : jobs.length > 0 ? (
           <>
             <FilterPanel
               filters={filterConfig}
@@ -397,74 +324,26 @@ const JobHistory = () => {
               activeFilters={activeFilters}
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div className="card">
-                <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
-                  Ongoing Jobs ({ongoingJobs.length})
-                </h2>
-                {ongoingJobs.length > 0 ? (
-                  <DataTable
-                    data={ongoingJobs}
-                    columns={tableColumns}
-                    keyField="id"
-                    searchable={false}
-                    pagination={ongoingJobs.length > 5}
-                    itemsPerPage={5}
-                    onRowClick={openJobDetails}
-                    rowActions={rowActions}
-                  />
-                ) : (
-                  <EmptyState icon="job" title="No Ongoing Jobs" description="No jobs currently in progress." />
-                )}
-              </div>
-
-              <div className="card">
-                <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                  Open Jobs ({openJobs.length})
-                </h2>
-                {openJobs.length > 0 ? (
-                  <DataTable
-                    data={openJobs}
-                    columns={tableColumns}
-                    keyField="id"
-                    searchable={false}
-                    pagination={openJobs.length > 5}
-                    itemsPerPage={5}
-                    onRowClick={openJobDetails}
-                    rowActions={rowActions}
-                  />
-                ) : (
-                  <EmptyState icon="job" title="No Open Jobs" description="No jobs waiting to be assigned." />
-                )}
-              </div>
-            </div>
-
             <div className="card">
-              <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                Completed Jobs ({completedJobs.length})
-              </h2>
-              {completedJobs.length > 0 ? (
-                <DataTable
-                  data={completedJobs}
-                  columns={tableColumns}
-                  keyField="id"
-                  searchable={true}
-                  searchPlaceholder="Search completed jobs..."
-                  pagination={true}
-                  itemsPerPage={10}
-                  onRowClick={openJobDetails}
-                  rowActions={rowActions}
-                />
-              ) : (
-                <EmptyState icon="success" title="No Completed Jobs" description="No jobs have been completed yet." />
-              )}
+              <DataTable
+                data={filteredJobs}
+                columns={tableColumns}
+                keyField="id"
+                searchable={true}
+                searchPlaceholder="Search ongoing jobs..."
+                pagination={filteredJobs.length > 10}
+                itemsPerPage={10}
+                onRowClick={openJobDetails}
+                rowActions={rowActions}
+              />
             </div>
           </>
         ) : (
-          <EmptyState icon="job" title="No Jobs Found" description="No service jobs have been created yet." />
+          <EmptyState 
+            icon="job" 
+            title="No Ongoing Jobs" 
+            description="There are no jobs currently in progress." 
+          />
         )}
 
         <JobDetailsModal />
@@ -473,4 +352,4 @@ const JobHistory = () => {
   )
 }
 
-export default JobHistory
+export default OngoingJobs

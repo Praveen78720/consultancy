@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { api, endpoints } from '../../services/api'
+import { useToast } from '../Toast'
+import Breadcrumbs from '../Breadcrumbs'
 
 const AddDevice = () => {
+  const { success: showSuccessToast, error: showErrorToast } = useToast()
   const [formData, setFormData] = useState({
     deviceName: '',
     modelName: '',
@@ -9,7 +12,6 @@ const AddDevice = () => {
   })
   const [existingDevices, setExistingDevices] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [message, setMessage] = useState({ type: '', text: '' })
   const [serialError, setSerialError] = useState('')
 
   // Fetch existing devices for validation
@@ -48,8 +50,6 @@ const AddDevice = () => {
       validateSerialNumber(value)
     }
     
-    // Clear messages when typing
-    if (message.text) setMessage({ type: '', text: '' })
   }
 
   const handleSubmit = async (e) => {
@@ -61,7 +61,6 @@ const AddDevice = () => {
     }
 
     setIsSubmitting(true)
-    setMessage({ type: '', text: '' })
 
     try {
       const payload = {
@@ -73,12 +72,9 @@ const AddDevice = () => {
 
       await api.post(endpoints.devices.list, payload)
       
-      setMessage({
-        type: 'success',
-        text: 'Device added successfully! You can add another device.'
-      })
+      showSuccessToast('Device added successfully! You can add another device.')
       
-      // Reset form but stay on page (Option 3-A)
+      // Reset form but stay on page
       setFormData({
         deviceName: '',
         modelName: '',
@@ -90,10 +86,7 @@ const AddDevice = () => {
       fetchExistingDevices()
       
     } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error.message || 'Failed to add device. Please try again.'
-      })
+      showErrorToast(error.message || 'Failed to add device. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -102,19 +95,9 @@ const AddDevice = () => {
   return (
     <div className="p-6 md:p-8 lg:p-10">
       <div className="max-w-2xl mx-auto">
+        <Breadcrumbs />
         <h1 className="text-3xl font-bold text-text-primary mb-2">Add New Device</h1>
         <p className="text-text-secondary mb-8">Add a new device to the inventory</p>
-
-        {/* Success/Error Messages */}
-        {message.text && (
-          <div className={`mb-6 p-4 rounded-lg ${
-            message.type === 'success' 
-              ? 'bg-green-50 border border-green-200 text-green-700' 
-              : 'bg-red-50 border border-red-200 text-red-700'
-          }`}>
-            {message.text}
-          </div>
-        )}
 
         {/* Add Device Form */}
         <form onSubmit={handleSubmit} className="card space-y-6">

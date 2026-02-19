@@ -9,16 +9,18 @@
 }
 
 @layer components {
+  /* Enhanced Button Styles */
   .btn-primary {
-    @apply bg-primary text-white font-semibold py-2 px-6 rounded-lg hover:bg-primary-dark transition-colors duration-200;
+    @apply relative overflow-hidden bg-gradient-to-r from-primary to-primary-light text-white font-semibold py-2.5 px-6 rounded-xl shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200;
   }
   
   .btn-secondary {
-    @apply bg-background-light text-text-primary font-semibold py-2 px-6 rounded-lg border border-border hover:bg-background-grey transition-colors duration-200;
+    @apply bg-white text-text-primary font-semibold py-2.5 px-6 rounded-xl border-2 border-border hover:border-primary hover:text-primary hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200;
   }
   
+  /* Enhanced Input Styles */
   .input-field {
-    @apply w-full px-4 py-3 rounded-lg border border-border text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+    @apply w-full px-4 py-3 rounded-xl border-2 border-border bg-white text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200;
   }
 
   .input-field.no-spinner {
@@ -31,9 +33,256 @@
     margin: 0;
   }
   
+  /* Enhanced Card Styles */
   .card {
-    @apply bg-white rounded-lg border border-border-light shadow-sm p-6;
+    @apply bg-white rounded-xl border border-border-light shadow-sm shadow-gray-100 p-6 hover:shadow-md hover:shadow-gray-200/50 transition-all duration-300;
   }
+  
+  .card-interactive {
+    @apply card cursor-pointer hover:-translate-y-1 hover:border-primary/30;
+  }
+  
+  .card-gradient {
+    @apply card bg-gradient-to-br from-white to-gray-50/50;
+  }
+  
+  /* Status Badges */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .badge-success {
+    @apply badge bg-green-100 text-green-700 border border-green-200;
+  }
+  
+  .badge-warning {
+    @apply badge bg-yellow-100 text-yellow-700 border border-yellow-200;
+  }
+  
+  .badge-error {
+    @apply badge bg-red-100 text-red-700 border border-red-200;
+  }
+  
+  .badge-info {
+    @apply badge bg-blue-100 text-blue-700 border border-blue-200;
+  }
+}
+
+/* Toast Animation */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Stagger Animation for Lists */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
+
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+
+/* Pulse Animation for Loading */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Page Transition */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: page-enter 0.3s ease-out;
+}
+
+/* Hover Effects */
+.hover-lift {
+  @apply transition-transform duration-200 hover:-translate-y-1;
+}
+
+.hover-scale {
+  @apply transition-transform duration-200 hover:scale-105;
+}
+
+.hover-glow {
+  @apply transition-shadow duration-300 hover:shadow-lg hover:shadow-primary/20;
+}
+
+/* Focus Styles */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+}
+
+/* Table Row Hover */
+.table-row-hover {
+  @apply transition-colors duration-150 hover:bg-primary/5;
+}
+
+/* Sidebar Item Active */
+.sidebar-active {
+  @apply bg-gradient-to-r from-primary to-primary-light text-white shadow-md;
+}
+
+/* Card Shadow Variants */
+.shadow-soft {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.shadow-medium {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-strong {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Gradient Backgrounds */
+.gradient-primary {
+  background: linear-gradient(135deg, #2F7FFB 0%, #4A90E2 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+}
+
+.gradient-warning {
+  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+}
+
+.gradient-error {
+  background: linear-gradient(135deg, #EF4444 0%, #F87171 100%);
+}
+
+/* Custom Date Input Styles */
+.date-input-wrapper {
+  @apply relative flex items-center;
+}
+
+.date-input-wrapper input[type="date"] {
+  @apply w-full px-4 py-3 pr-12 rounded-xl border-2 border-border bg-white text-text-primary;
+  @apply focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10;
+  @apply transition-all duration-200 cursor-pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Custom calendar icon */
+.date-input-wrapper::after {
+  content: '';
+  @apply absolute right-4 w-5 h-5 pointer-events-none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%232F7FFB' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* Hide default calendar icon in Chrome/Safari/Edge */
+.date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
+  @apply absolute right-0 w-full h-full opacity-0 cursor-pointer;
+}
+
+/* Hide default calendar icon in Firefox */
+.date-input-wrapper input[type="date"]::-moz-calendar-picker-indicator {
+  @apply opacity-0;
+}
+
+/* Date range inputs */
+.date-range-wrapper {
+  @apply flex items-center gap-3;
+}
+
+.date-range-wrapper .date-input-wrapper {
+  @apply flex-1;
+}
+
+.date-range-separator {
+  @apply text-text-secondary font-medium;
+}
+
+/* Date input in filter panel */
+.filter-date-input {
+  @apply w-full px-3 py-2 rounded-lg border-2 border-border bg-white text-text-primary text-sm;
+  @apply focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10;
+  @apply transition-all duration-200 cursor-pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Calendar popup styling (limited browser support) */
+input[type="date"]::-webkit-datetime-edit {
+  @apply text-text-primary;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  @apply px-1;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+  @apply text-text-secondary px-1;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  @apply text-text-primary;
+}
+
+/* Hover effect on date input */
+.date-input-wrapper:hover input[type="date"] {
+  @apply border-primary/50;
+}
+
+/* Disabled state */
+.date-input-wrapper input[type="date"]:disabled {
+  @apply bg-gray-100 text-text-secondary cursor-not-allowed border-border;
+}
+
+/* Placeholder style */
+.date-input-wrapper input[type="date"]:placeholder-shown {
+  @apply text-text-secondary/60;
 }
 
 
